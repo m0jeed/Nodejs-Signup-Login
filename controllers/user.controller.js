@@ -1,10 +1,12 @@
 const models = require('../models');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Validator = require('fastest-validator')
+
 
 function signUp(req, res){
-
-    models.User.findOne({where:{email:req.body.email}}).then( result => {
+    models.User.findOne({where:{email:req.body.email}})
+    .then( result => {
         if(result){
             res.status(409).json({
                 message: "Email already exist",
@@ -19,6 +21,22 @@ function signUp(req, res){
                         password: hash
                     }
         
+                    const schema = {
+                        name: {type: "string", optional: false, max:"100" },
+                        email: {type: "string", optional: false, max:"100" },
+                        password: {type: "string", optional: false }
+                    }
+                
+                    const v = new Validator();
+                
+                    const validationResponse = v.validate(user,schema)
+                
+                    if(validationResponse !== true){
+                        return res.status(400).json({
+                            message: "Validation failed",
+                            errors: validationResponse
+                        });
+                    }
         
                     models.User.create(user).then(result =>{
                         res.status(201).json({
@@ -37,8 +55,9 @@ function signUp(req, res){
         
         }
     }).catch(error =>{
-
-          
+        res.status(500).json({
+            message: "Something went wrong",
+        })          
     })
 
    
@@ -47,7 +66,8 @@ function signUp(req, res){
 
 
 function login(req, res){
-    models.User.findOne({where:{email: req.body.email}}).then(user => {
+    models.User.findOne({where:{email: req.body.email}})
+    .then(user => {
             if(user == null){
                 res.status(401).json({
                     message: "Invalid credentials!",
@@ -58,7 +78,7 @@ function login(req, res){
                         const token = jwt.sign({
                             email: user.email,
                             userId: user.id,
-                        }, 'secret', function(err, token){
+                        }, process.env.JWT_KEY, function(err, token){
                             res.status(200).json({
                                 message: "Authentication Successful!",
                                 token: token
